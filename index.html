@@ -3,57 +3,38 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>The Reverse Puzzle</title>
+  <title>Reverse Puzzle — Hard (5×5)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Start overlay -->
-  <div id="overlay" class="overlay">
-    <div class="card">
-      <h1>🪚 The Reverse Puzzle</h1>
-      <p>Slide the tiles to reassemble Jigsaw’s mask. Solve it to reveal the passcode.</p>
-      <div class="row">
-        <label for="size">Grid</label>
-        <select id="size">
-          <option value="3">3 × 3 (Easy)</option>
-          <option value="4" selected>4 × 4 (Medium)</option>
-          <option value="5">5 × 5 (Hard)</option>
-        </select>
-      </div>
-      <button id="startBtn" class="btn primary">Start the Challenge</button>
-      <p class="hint">Tip: you can tap tiles or use arrow keys.</p>
-    </div>
-  </div>
-
   <header class="top">
-    <h2>🪚 The Reverse Puzzle</h2>
-    <div class="hud">
-      <div class="pill"><span class="label">Moves</span> <span id="moves">0</span></div>
-      <div class="pill"><span class="label">Time</span> <span id="time">00:00</span></div>
-      <button id="reshuffleBtn" class="btn ghost">Reshuffle</button>
-    </div>
+    <h1>🪚 The Reverse Puzzle</h1>
+    <p class="sub">Hard mode only — complete the 5×5 sliding puzzle to reveal the passcode.</p>
   </header>
 
   <main>
-    <!-- Change data-img if your image has a different filename -->
+    <section class="hud">
+      <div><strong>Grid:</strong> 5×5</div>
+      <div><strong>Moves:</strong> <span id="moves">0</span></div>
+      <button id="newBtn" class="btn">New Puzzle</button>
+    </section>
+
+    <!-- Set your image here -->
     <div id="puzzle" class="board" data-img="Halloween Puzzle.PNG"></div>
+
+    <p class="hint">Tap or slide tiles next to the empty space.</p>
   </main>
 
-  <!-- Success modal -->
-  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mTitle">
-    <div class="card">
-      <h3 id="mTitle">✅ Puzzle Complete!</h3>
-      <p>You reassembled the mask. Here’s the passcode for Jigsaw’s second clue:</p>
-
-      <div class="codeRow">
-        <input id="code" value="RAVENPROTOCOL" readonly class="mono" />
-        <button id="copy" class="btn small">Copy code</button>
+  <!-- Win Modal -->
+  <div id="winModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <h2>✅ Completed!</h2>
+      <p>Passcode for Jigsaw’s second clue:</p>
+      <div class="code-row">
+        <input id="passcode" class="code" value="RAVENPROTOCOL" readonly />
+        <button id="copyBtn" class="btn small">Copy code</button>
       </div>
-
-      <div class="actions">
-        <button id="playAgain" class="btn primary">Play Again</button>
-        <button id="close" class="btn ghost">Close</button>
-      </div>
+      <button id="closeWin" class="btn ghost">Close</button>
     </div>
   </div>
 
