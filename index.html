@@ -1,73 +1,59 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Wire Protocol — Classic Bomb</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Reverse Puzzle</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <!-- Start overlay -->
-  <div id="startOverlay" class="full-overlay">
-    <div class="start-card">
-      <h1>💣 Wire Protocol</h1>
-      <p>You have <strong>2 minutes</strong> to cut the correct wires in the order described.</p>
+  <div id="overlay" class="overlay">
+    <div class="card">
+      <h1>🪚 The Reverse Puzzle</h1>
+      <p>Slide the tiles to reassemble Jigsaw’s mask. Solve it to reveal the passcode.</p>
+      <div class="row">
+        <label for="size">Grid</label>
+        <select id="size">
+          <option value="3">3 × 3 (Easy)</option>
+          <option value="4" selected>4 × 4 (Medium)</option>
+          <option value="5">5 × 5 (Hard)</option>
+        </select>
+      </div>
       <button id="startBtn" class="btn primary">Start the Challenge</button>
+      <p class="hint">Tip: you can tap tiles or use arrow keys.</p>
     </div>
   </div>
 
-  <div class="frame">
-    <header class="topbar">
-      <h1>WIRE PROTOCOL</h1>
-    </header>
-    <main class="panel">
-      <aside class="left">
-        <div class="lcd">
-          <div class="lcd-title">TIMER</div>
-          <div id="timer" class="digits">02:00</div>
-        </div>
-        <div class="lcd small">
-          <div class="lcd-title">STATUS</div>
-          <div id="status" class="mini">Press Start to begin…</div>
-        </div>
-      </aside>
-
-      <section class="core">
-        <ul id="wires" class="wires"></ul>
-      </section>
-
-      <aside class="right">
-        <div class="manual">
-          <div class="manual-title">INSTRUCTIONS</div>
-          <ol id="rules" class="rules"></ol>
-        </div>
-        <div class="btns">
-          <button id="reset" class="btn">New Bomb</button>
-        </div>
-      </aside>
-    </main>
-
-    <footer class="bottom">
-      <div class="lights"><span class="lamp" id="lamp1"></span><span class="lamp" id="lamp2"></span><span class="lamp" id="lamp3"></span></div>
-    </footer>
-  </div>
-
-  <!-- Results -->
-  <div id="boom" class="overlay hidden">
-    <div class="card fail">
-      <h2>💥 BOOM!</h2>
-      <p>You failed to disarm the bomb.</p>
-      <button id="tryAgain" class="btn">Try Again</button>
+  <header class="top">
+    <h2>🪚 The Reverse Puzzle</h2>
+    <div class="hud">
+      <div class="pill"><span class="label">Moves</span> <span id="moves">0</span></div>
+      <div class="pill"><span class="label">Time</span> <span id="time">00:00</span></div>
+      <button id="reshuffleBtn" class="btn ghost">Reshuffle</button>
     </div>
-  </div>
+  </header>
 
-  <div id="success" class="overlay hidden">
-    <div class="card win">
-      <h2>✅ Module Disarmed</h2>
-      <p>Passcode to Jigsaw’s second clue:</p>
-      <div class="code">RAVENPROTOCOL</div>
-      <button id="copy" class="btn">Copy Code</button>
-      <button id="playAgain" class="btn ghost">Play Again</button>
+  <main>
+    <!-- Change data-img if your image has a different filename -->
+    <div id="puzzle" class="board" data-img="Jigsaw Face.png" aria-label="Sliding puzzle board"></div>
+  </main>
+
+  <!-- Success modal -->
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="card">
+      <h3 id="mTitle">✅ Puzzle Complete!</h3>
+      <p>You reassembled the mask. Here’s the passcode for Jigsaw’s second clue:</p>
+
+      <div class="codeRow">
+        <input id="code" value="RAVENPROTOCOL" readonly class="mono" />
+        <button id="copy" class="btn small">Copy code</button>
+      </div>
+
+      <div class="actions">
+        <button id="playAgain" class="btn primary">Play Again</button>
+        <button id="close" class="btn ghost">Close</button>
+      </div>
     </div>
   </div>
 
