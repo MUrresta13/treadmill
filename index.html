@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wire Protocol — Bomb Module</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="frame">
+    <header class="topbar">
+      <div class="screws"><span class="screw"></span><span class="screw"></span></div>
+      <h1>WIRE PROTOCOL</h1>
+      <div class="screws"><span class="screw"></span><span class="screw"></span></div>
+    </header>
+    <main class="panel">
+      <aside class="left">
+        <div class="lcd"><div class="lcd-title">TIMER</div><div id="timer" class="digits">02:00</div></div>
+        <div class="lcd small"><div class="lcd-title">STATUS</div><div id="status" class="mini">Awaiting input…</div></div>
+      </aside>
+      <section class="core"><ul id="wires" class="wires"></ul></section>
+      <aside class="right">
+        <div class="manual"><div class="manual-title">INSTRUCTIONS</div><ol id="rules" class="rules"></ol></div>
+        <div class="btns"><button id="reset" class="btn secondary">New Bomb</button></div>
+      </aside>
+    </main>
+    <footer class="bottom"><div class="lights"><span class="lamp" id="lamp1"></span><span class="lamp" id="lamp2"></span><span class="lamp" id="lamp3"></span></div></footer>
+  </div>
+
+  <div id="boom" class="overlay hidden"><div class="card fail"><h2>💥 BOOM!</h2><p>You failed to disarm the bomb.</p><button id="tryAgain" class="btn">Try Again</button></div></div>
+  <div id="success" class="overlay hidden"><div class="card win"><h2>✅ Module Disarmed</h2><p>Passcode to Jigsaw’s second clue:</p><div class="code">RAVENPROTOCOL</div><button id="copy" class="btn">Copy Code</button><button id="playAgain" class="btn secondary">Play Again</button></div></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
