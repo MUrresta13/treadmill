@@ -1,231 +1,204 @@
+/* The Reverse Puzzle – sliding tiles with guaranteed-solvable shuffle */
 
-// --- Wire Protocol (single-player, medium difficulty) ---
-const COLORS = ['RED','BLUE','GREEN','YELLOW','WHITE','BLACK'];
+const boardEl = document.getElementById('puzzle');
+const movesEl = document.getElementById('moves');
+const timeEl  = document.getElementById('time');
+const reshuffleBtn = document.getElementById('reshuffleBtn');
 
-// Elements
-const wiresEl = document.getElementById('wires');
-const rulesEl  = document.getElementById('rules');
-const timerEl  = document.getElementById('timer');
-const statusEl = document.getElementById('status');
-const resetBtn = document.getElementById('reset');
-const boom = document.getElementById('boom');
-const tryAgain = document.getElementById('tryAgain');
-const success = document.getElementById('success');
-const playAgain = document.getElementById('playAgain');
-const copyBtn = document.getElementById('copy');
-
-// Start overlay
-const startOverlay = document.getElementById('startOverlay');
+const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('startBtn');
+const sizeSel = document.getElementById('size');
 
-let state = {
-  timer: 120,
-  tickId: null,
-  layout: [],        // [{color, id}]
-  solutionIds: [],   // array of ids in order
-  nextIndex: 0,
-  started: false
-};
+const modal = document.getElementById('modal');
+const copyBtn = document.getElementById('copy');
+const closeBtn = document.getElementById('close');
+const againBtn = document.getElementById('playAgain');
 
-function sample(arr){return arr[Math.floor(Math.random()*arr.length)];}
-function shuffle(arr){return arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(v=>v[1]);}
-function pad(n){return n.toString().padStart(2,'0');}
+let N = 4;                         // grid size
+let tiles = [];                    // 0..(N*N-1), where 0 = blank
+let blankIndex = 0;
+let moves = 0;
+let startTs = null;
+let tickTimer = null;
+let IMG = null;
 
-function renderTimer(){
-  const m = Math.floor(state.timer/60), s = state.timer%60;
-  timerEl.textContent = `${pad(m)}:${pad(s)}`;
+// ——— helpers
+const idx = (r,c)=> r*N + c;
+const rc  = (i)=> [Math.floor(i/N), i%N];
+
+function fmtTime(sec){
+  const m = Math.floor(sec/60), s = sec%60;
+  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-function startTimer(){
-  state.tickId = setInterval(()=>{
-    if(!state.started) return;
-    state.timer--;
-    renderTimer();
-    if(state.timer<=0){ fail('Time ran out.'); }
-  },1000);
+// inversion count to test solvability
+function inversions(arr){
+  const flat = arr.filter(v=>v!==0);
+  let inv = 0;
+  for (let i=0;i<flat.length;i++)
+    for (let j=i+1;j<flat.length;j++)
+      if (flat[i] > flat[j]) inv++;
+  return inv;
+}
+function isSolvable(arr){
+  const inv = inversions(arr);
+  if (N % 2 === 1) return inv % 2 === 0;                // odd grid
+  const [rBlank] = rc(arr.indexOf(0));                   // row from 0 top
+  const rowFromBottom = N - rBlank;                      // 1..N
+  // even grid: (blank on even row from bottom & inversions odd) OR (odd row & inversions even)
+  return (rowFromBottom % 2 === 0) ? (inv % 2 === 1) : (inv % 2 === 0);
 }
 
-function stopTimer(){ clearInterval(state.tickId); state.tickId=null; }
-
-// Build a fresh bomb
-function newBomb(){
-  // 5–7 wires, with duplicates allowed
-  const count = 5 + Math.floor(Math.random()*3); // 5,6,7
-  const layout = [];
-  for(let i=0;i<count;i++){
-    layout.push({color: sample(COLORS), id: cryptoRandom()});
-  }
-  state.layout = layout;
-  renderWires();
-
-  // Choose 3–5 TARGET wires to cut in order, then generate readable rules
-  const ids = layout.map(w=>w.id);
-  state.solutionIds = shuffle(ids).slice(0, 4); // exactly 4 cuts for medium
-  state.nextIndex = 0;
-
-  generateRules();
-  statusEl.textContent = 'Follow the steps. Tap a wire to cut it.';
+function makeGoal(){
+  // goal = [1,2,3,...,N*N-1,0]
+  return Array.from({length:N*N}, (_,i)=> (i+1)%(N*N));
 }
 
-// Crypto-ish id
-function cryptoRandom(){
-  return Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
+function shuffleSolvable(){
+  let arr;
+  do{
+    arr = makeGoal()
+      .sort(()=>Math.random()-0.5);
+  } while(!isSolvable(arr) || isSolved(arr));
+  return arr;
 }
 
-function renderWires(){
-  wiresEl.innerHTML = '';
-  state.layout.forEach((w, idx)=>{
-    const li = document.createElement('li');
-    li.className = `wire wire-${w.color}`;
-    li.textContent = w.color;
-    li.dataset.id = w.id;
-    li.dataset.index = idx;
-    li.addEventListener('click', onCut);
-    wiresEl.appendChild(li);
+function isSolved(a = tiles){
+  for (let i=0;i<a.length-1;i++) if (a[i] !== i+1) return false;
+  return a[a.length-1] === 0;
+}
+
+function buildBoard(){
+  boardEl.style.setProperty('grid-template-columns', `repeat(${N}, 1fr)`);
+  boardEl.innerHTML = '';
+
+  tiles.forEach((val, i)=>{
+    const t = document.createElement('button');
+    t.className = 'tile';
+    t.tabIndex = 0;
+
+    if (val === 0){
+      t.classList.add('blank');
+      t.setAttribute('aria-label', 'Blank');
+    } else {
+      // background slice
+      const [r,c] = rc(val-1);
+      t.style.backgroundImage = `url("${IMG}")`;
+      t.style.backgroundSize = `${N*100}% ${N*100}%`;
+      t.style.backgroundPosition = `${(c/(N-1))*100}% ${(r/(N-1))*100}%`;
+      t.textContent = ''; // or show numbers for debugging
+      t.setAttribute('aria-label', `Tile ${val}`);
+    }
+
+    t.addEventListener('click', ()=>tryMove(i));
+    boardEl.appendChild(t);
   });
 }
 
-// Helper lookups on current layout
-function indexOfId(id){
-  return state.layout.findIndex(w=>w.id===id);
-}
-function neighbors(idx){
-  return {up: idx>0?state.layout[idx-1]:null, down: idx<state.layout.length-1?state.layout[idx+1]:null};
-}
-function colorPositions(color){
-  return state.layout.map((w,i)=>(w.color===color?i:-1)).filter(i=>i!==-1);
-}
-function ordinal(n){
-  const map={1:'1st',2:'2nd',3:'3rd'}; return map[n]||`${n}th`;
-}
-
-// Create clear, unambiguous steps that correspond to chosen solutionIds
-function generateRules(){
-  rulesEl.innerHTML = '';
-  const usedDescriptions = new Set();
-
-  state.solutionIds.forEach((id, stepIdx)=>{
-    const pos = indexOfId(id);
-    const w = state.layout[pos];
-    const same = colorPositions(w.color);
-
-    let desc = '';
-
-    // Prefer unique, deterministic descriptions
-    if(same.length===1){
-      desc = `Cut the only ${w.color} wire.`;
-    }else if(pos === same[0]){
-      desc = `Cut the leftmost ${w.color} wire.`;
-    }else if(pos === same[same.length-1]){
-      desc = `Cut the rightmost ${w.color} wire.`;
-    }else{
-      const k = same.indexOf(pos)+1;
-      desc = `Cut the ${ordinal(k)} ${w.color} wire from the top.`;
-    }
-
-    // Add a neighbor-based cue if available (extra clarity / flavor)
-    const nb = neighbors(pos);
-    if(nb.up && nb.down && Math.random()<0.5){
-      desc += ` (It sits between ${nb.up.color} and ${nb.down.color}.)`;
-    }else if(nb.up && Math.random()<0.25){
-      desc += ` (It is directly below ${nb.up.color}.)`;
-    }else if(nb.down && Math.random()<0.25){
-      desc += ` (It is directly above ${nb.down.color}.)`;
-    }
-
-    // Deduplicate wording just in case
-    let attempt=0;
-    while(usedDescriptions.has(desc) && attempt<5){
-      // slightly tweak
-      if(same.length>1){
-        const k = same.indexOf(pos)+1;
-        desc = `Cut the ${ordinal(k)} ${w.color} wire (counting from top).`;
-      }else{
-        desc = `Cut the ${w.color} wire.`;
-      }
-      attempt++;
-    }
-    usedDescriptions.add(desc);
-
-    const li = document.createElement('li');
-    li.textContent = `Step ${stepIdx+1}: ${desc}`;
-    rulesEl.appendChild(li);
-  });
-}
-
-function onCut(e){
-  if(!state.started) return;
-  const id = e.currentTarget.dataset.id;
-
-  // already cut?
-  if(e.currentTarget.classList.contains('cut')) return;
-
-  const expected = state.solutionIds[state.nextIndex];
-  if(id === expected){
-    // Correct
-    e.currentTarget.classList.add('cut');
-    state.nextIndex++;
-    flashLamp('green');
-    if(state.nextIndex >= state.solutionIds.length){
-      // Disarmed!
-      state.started = false;
-      stopTimer();
-      document.getElementById('lamp1').classList.add('on');
-      document.getElementById('lamp2').classList.add('on');
-      document.getElementById('lamp3').classList.add('on');
-      showSuccess();
-    }
-  }else{
-    fail('Wrong wire.');
+function tryMove(i){
+  const can = neighbors(blankIndex).includes(i);
+  if (!can) return;
+  // swap
+  [tiles[blankIndex], tiles[i]] = [tiles[i], tiles[blankIndex]];
+  blankIndex = i;
+  moves++;
+  movesEl.textContent = moves;
+  buildBoard();
+  if (isSolved()){
+    stopTimer();
+    setTimeout(()=> showWin(), 120);
   }
 }
 
-function fail(reason){
-  state.started = false;
+function neighbors(i){
+  const [r,c] = rc(i);
+  const list = [];
+  if (r>0) list.push(idx(r-1,c));
+  if (r<N-1) list.push(idx(r+1,c));
+  if (c>0) list.push(idx(r,c-1));
+  if (c<N-1) list.push(idx(r,c+1));
+  return list;
+}
+
+function startGame(){
+  N = Number(sizeSel.value || 4);
+  IMG = boardEl.dataset.img || 'Jigsaw Face.png';
+  tiles = shuffleSolvable();
+  blankIndex = tiles.indexOf(0);
+  moves = 0;
+  movesEl.textContent = moves;
+  buildBoard();
+
+  // timer
+  startTs = Date.now();
   stopTimer();
-  statusEl.textContent = `FAIL · ${reason}`;
-  boom.classList.remove('hidden');
+  tickTimer = setInterval(()=>{
+    const sec = Math.floor((Date.now() - startTs)/1000);
+    timeEl.textContent = fmtTime(sec);
+  }, 250);
+
+  // focus first tile for keyboard play
+  const firstTile = boardEl.querySelector('.tile:not(.blank)');
+  if (firstTile) firstTile.focus();
 }
 
-function showSuccess(){
-  success.classList.remove('hidden');
+function stopTimer(){ if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
+
+function showWin(){
+  modal.classList.remove('hidden');
 }
 
-function flashLamp(color){
-  // simple visual feedback (reuse one lamp)
-  const l = document.getElementById('lamp2');
-  l.classList.add('on');
-  setTimeout(()=>l.classList.remove('on'),200);
+function closeWin(){
+  modal.classList.add('hidden');
 }
 
-function resetGame(){
-  // Reset state
-  state.timer = 120;
-  renderTimer();
-  state.started = true;
-  document.querySelectorAll('.lamp').forEach(l=>l.classList.remove('on'));
-  boom.classList.add('hidden'); success.classList.add('hidden');
-  newBomb();
-  statusEl.textContent = 'Follow the steps. Tap a wire to cut it.';
-}
+// keyboard controls
+window.addEventListener('keydown', (e)=>{
+  const key = e.key;
+  if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(key)) return;
 
-// Clipboard
-copyBtn.addEventListener('click', async ()=>{
-  try{ await navigator.clipboard.writeText('RAVENPROTOCOL'); copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy Code',1200);}catch{}
+  // move blank by simulating the opposite direction swap
+  const [r,c] = rc(blankIndex);
+  let target = null;
+  if (key === 'ArrowUp'    && r < N-1) target = idx(r+1,c);
+  if (key === 'ArrowDown'  && r > 0)   target = idx(r-1,c);
+  if (key === 'ArrowLeft'  && c < N-1) target = idx(r,c+1);
+  if (key === 'ArrowRight' && c > 0)   target = idx(r,c-1);
+  if (target !== null) tryMove(target);
 });
 
-// Buttons
-resetBtn.addEventListener('click', resetGame);
-tryAgain?.addEventListener('click', ()=>{boom.classList.add('hidden'); resetGame();});
-playAgain?.addEventListener('click', ()=>{success.classList.add('hidden'); resetGame();});
-
-// Start overlay logic
+// UI events
 startBtn.addEventListener('click', ()=>{
-  startOverlay.remove();
-  state.started = true;
-  resetGame();
-  if(!state.tickId) startTimer();
+  overlay.classList.add('hidden');
+  startGame();
 });
+reshuffleBtn.addEventListener('click', startGame);
+copyBtn.addEventListener('click', ()=>{
+  const v = document.getElementById('code').value;
+  navigator.clipboard.writeText(v).then(()=>{
+    copyBtn.textContent = 'Copied!';
+    setTimeout(()=>copyBtn.textContent='Copy code', 900);
+  });
+});
+againBtn.addEventListener('click', ()=>{
+  closeWin();
+  startGame();
+});
+closeBtn.addEventListener('click', closeWin);
 
-// Prepare initial renders
-renderTimer();
+// If image 404s, keep game playable with a pattern
+function handleImageFallback(){
+  const test = new Image();
+  test.src = boardEl.dataset.img || 'Jigsaw Face.png';
+  test.onload = ()=>{};        // all good
+  test.onerror = ()=>{
+    // swap to a subtle pattern if missing
+    boardEl.dataset.img = '';
+    document.querySelectorAll('.tile:not(.blank)').forEach(t=>{
+      t.style.backgroundImage = 'radial-gradient(#202738, #0f172a)';
+      t.style.backgroundSize = 'auto';
+      t.style.backgroundPosition = 'center';
+    });
+  };
+}
+document.addEventListener('DOMContentLoaded', handleImageFallback);
