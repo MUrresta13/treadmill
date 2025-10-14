@@ -1,204 +1,148 @@
-/* The Reverse Puzzle – sliding tiles with guaranteed-solvable shuffle */
+(() => {
+  const boardEl = document.getElementById('puzzle');
+  const movesEl = document.getElementById('moves');
+  const newBtn = document.getElementById('newBtn');
 
-const boardEl = document.getElementById('puzzle');
-const movesEl = document.getElementById('moves');
-const timeEl  = document.getElementById('time');
-const reshuffleBtn = document.getElementById('reshuffleBtn');
+  const winModal = document.getElementById('winModal');
+  const closeWin = document.getElementById('closeWin');
+  const copyBtn = document.getElementById('copyBtn');
+  const passInput = document.getElementById('passcode');
 
-const overlay = document.getElementById('overlay');
-const startBtn = document.getElementById('startBtn');
-const sizeSel = document.getElementById('size');
+  const IMG = boardEl.dataset.img;   // "Halloween Puzzle.PNG"
+  const SIZE = 5;                     // hard: 5×5
+  const COUNT = SIZE * SIZE;
 
-const modal = document.getElementById('modal');
-const copyBtn = document.getElementById('copy');
-const closeBtn = document.getElementById('close');
-const againBtn = document.getElementById('playAgain');
+  let tiles = [];     // array of index positions 0..COUNT-1 (last is empty)
+  let emptyIndex;     // index within tiles[] that is the empty slot
+  let moves = 0;
+  let spriteURL = '';
 
-let N = 4;                         // grid size
-let tiles = [];                    // 0..(N*N-1), where 0 = blank
-let blankIndex = 0;
-let moves = 0;
-let startTs = null;
-let tickTimer = null;
-let IMG = null;
-
-// ——— helpers
-const idx = (r,c)=> r*N + c;
-const rc  = (i)=> [Math.floor(i/N), i%N];
-
-function fmtTime(sec){
-  const m = Math.floor(sec/60), s = sec%60;
-  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}
-
-// inversion count to test solvability
-function inversions(arr){
-  const flat = arr.filter(v=>v!==0);
-  let inv = 0;
-  for (let i=0;i<flat.length;i++)
-    for (let j=i+1;j<flat.length;j++)
-      if (flat[i] > flat[j]) inv++;
-  return inv;
-}
-function isSolvable(arr){
-  const inv = inversions(arr);
-  if (N % 2 === 1) return inv % 2 === 0;                // odd grid
-  const [rBlank] = rc(arr.indexOf(0));                   // row from 0 top
-  const rowFromBottom = N - rBlank;                      // 1..N
-  // even grid: (blank on even row from bottom & inversions odd) OR (odd row & inversions even)
-  return (rowFromBottom % 2 === 0) ? (inv % 2 === 1) : (inv % 2 === 0);
-}
-
-function makeGoal(){
-  // goal = [1,2,3,...,N*N-1,0]
-  return Array.from({length:N*N}, (_,i)=> (i+1)%(N*N));
-}
-
-function shuffleSolvable(){
-  let arr;
-  do{
-    arr = makeGoal()
-      .sort(()=>Math.random()-0.5);
-  } while(!isSolvable(arr) || isSolved(arr));
-  return arr;
-}
-
-function isSolved(a = tiles){
-  for (let i=0;i<a.length-1;i++) if (a[i] !== i+1) return false;
-  return a[a.length-1] === 0;
-}
-
-function buildBoard(){
-  boardEl.style.setProperty('grid-template-columns', `repeat(${N}, 1fr)`);
-  boardEl.innerHTML = '';
-
-  tiles.forEach((val, i)=>{
-    const t = document.createElement('button');
-    t.className = 'tile';
-    t.tabIndex = 0;
-
-    if (val === 0){
-      t.classList.add('blank');
-      t.setAttribute('aria-label', 'Blank');
-    } else {
-      // background slice
-      const [r,c] = rc(val-1);
-      t.style.backgroundImage = `url("${IMG}")`;
-      t.style.backgroundSize = `${N*100}% ${N*100}%`;
-      t.style.backgroundPosition = `${(c/(N-1))*100}% ${(r/(N-1))*100}%`;
-      t.textContent = ''; // or show numbers for debugging
-      t.setAttribute('aria-label', `Tile ${val}`);
-    }
-
-    t.addEventListener('click', ()=>tryMove(i));
-    boardEl.appendChild(t);
+  // Preload the image, then build once ready
+  preloadImage(IMG).then(url => {
+    spriteURL = url;
+    build();
   });
-}
 
-function tryMove(i){
-  const can = neighbors(blankIndex).includes(i);
-  if (!can) return;
-  // swap
-  [tiles[blankIndex], tiles[i]] = [tiles[i], tiles[blankIndex]];
-  blankIndex = i;
-  moves++;
-  movesEl.textContent = moves;
-  buildBoard();
-  if (isSolved()){
-    stopTimer();
-    setTimeout(()=> showWin(), 120);
-  }
-}
-
-function neighbors(i){
-  const [r,c] = rc(i);
-  const list = [];
-  if (r>0) list.push(idx(r-1,c));
-  if (r<N-1) list.push(idx(r+1,c));
-  if (c>0) list.push(idx(r,c-1));
-  if (c<N-1) list.push(idx(r,c+1));
-  return list;
-}
-
-function startGame(){
-  N = Number(sizeSel.value || 4);
-  IMG = boardEl.dataset.img || 'Jigsaw Face.png';
-  tiles = shuffleSolvable();
-  blankIndex = tiles.indexOf(0);
-  moves = 0;
-  movesEl.textContent = moves;
-  buildBoard();
-
-  // timer
-  startTs = Date.now();
-  stopTimer();
-  tickTimer = setInterval(()=>{
-    const sec = Math.floor((Date.now() - startTs)/1000);
-    timeEl.textContent = fmtTime(sec);
-  }, 250);
-
-  // focus first tile for keyboard play
-  const firstTile = boardEl.querySelector('.tile:not(.blank)');
-  if (firstTile) firstTile.focus();
-}
-
-function stopTimer(){ if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
-
-function showWin(){
-  modal.classList.remove('hidden');
-}
-
-function closeWin(){
-  modal.classList.add('hidden');
-}
-
-// keyboard controls
-window.addEventListener('keydown', (e)=>{
-  const key = e.key;
-  if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(key)) return;
-
-  // move blank by simulating the opposite direction swap
-  const [r,c] = rc(blankIndex);
-  let target = null;
-  if (key === 'ArrowUp'    && r < N-1) target = idx(r+1,c);
-  if (key === 'ArrowDown'  && r > 0)   target = idx(r-1,c);
-  if (key === 'ArrowLeft'  && c < N-1) target = idx(r,c+1);
-  if (key === 'ArrowRight' && c > 0)   target = idx(r,c-1);
-  if (target !== null) tryMove(target);
-});
-
-// UI events
-startBtn.addEventListener('click', ()=>{
-  overlay.classList.add('hidden');
-  startGame();
-});
-reshuffleBtn.addEventListener('click', startGame);
-copyBtn.addEventListener('click', ()=>{
-  const v = document.getElementById('code').value;
-  navigator.clipboard.writeText(v).then(()=>{
-    copyBtn.textContent = 'Copied!';
-    setTimeout(()=>copyBtn.textContent='Copy code', 900);
+  newBtn.addEventListener('click', build);
+  closeWin.addEventListener('click', () => winModal.classList.add('hidden'));
+  copyBtn.addEventListener('click', () => {
+    passInput.select(); passInput.setSelectionRange(0, 999);
+    try { document.execCommand('copy'); copyBtn.textContent = 'Copied!'; }
+    catch { /* ignore */ }
+    setTimeout(() => (copyBtn.textContent = 'Copy code'), 1200);
   });
-});
-againBtn.addEventListener('click', ()=>{
-  closeWin();
-  startGame();
-});
-closeBtn.addEventListener('click', closeWin);
 
-// If image 404s, keep game playable with a pattern
-function handleImageFallback(){
-  const test = new Image();
-  test.src = boardEl.dataset.img || 'Jigsaw Face.png';
-  test.onload = ()=>{};        // all good
-  test.onerror = ()=>{
-    // swap to a subtle pattern if missing
-    boardEl.dataset.img = '';
-    document.querySelectorAll('.tile:not(.blank)').forEach(t=>{
-      t.style.backgroundImage = 'radial-gradient(#202738, #0f172a)';
-      t.style.backgroundSize = 'auto';
-      t.style.backgroundPosition = 'center';
+  function build() {
+    // Reset
+    moves = 0; movesEl.textContent = '0';
+    boardEl.innerHTML = '';
+
+    // Ordered goal arrangement (0..COUNT-2, last empty marker COUNT-1)
+    const goal = Array.from({length: COUNT}, (_, i) => i);
+    // Shuffle to a solvable permutation (for odd grid, even inversions)
+    let perm;
+    do {
+      perm = shuffle(goal.slice(0, COUNT - 1)); // leave out last; it’s the empty
+      perm.push(COUNT - 1); // empty at the end
+    } while (!isSolvableOdd(perm));
+
+    tiles = perm;
+    emptyIndex = tiles.indexOf(COUNT - 1);
+
+    // Render tiles
+    tiles.forEach((n, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'tile';
+      cell.dataset.pos = idx;
+
+      if (n === COUNT - 1) {
+        cell.classList.add('empty');
+      } else {
+        // compute background position for tile n in a 5x5 sprite
+        const x = n % SIZE;
+        const y = Math.floor(n / SIZE);
+        cell.style.backgroundImage = `url("${spriteURL}")`;
+        cell.style.backgroundSize = `${SIZE * 100}% ${SIZE * 100}%`;
+        cell.style.backgroundPosition = `${(x * 100) / (SIZE - 1)}% ${(y * 100) / (SIZE - 1)}%`;
+      }
+
+      cell.addEventListener('click', () => tryMove(idx));
+      cell.addEventListener('touchstart', () => tryMove(idx), {passive: true});
+      boardEl.appendChild(cell);
     });
-  };
-}
-document.addEventListener('DOMContentLoaded', handleImageFallback);
+  }
+
+  function tryMove(idx) {
+    if (!isAdjacent(idx, emptyIndex)) return;
+    // swap positions
+    [tiles[idx], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[idx]];
+    // update DOM
+    const a = boardEl.children[idx];
+    const b = boardEl.children[emptyIndex];
+    a.classList.toggle('empty');
+    b.classList.toggle('empty');
+
+    // also swap their background positions so they carry the right slice
+    const aImg = a.style.backgroundImage; const aPos = a.style.backgroundPosition;
+    const bImg = b.style.backgroundImage; const bPos = b.style.backgroundPosition;
+    a.style.backgroundImage = bImg; a.style.backgroundPosition = bPos;
+    b.style.backgroundImage = aImg; b.style.backgroundPosition = aPos;
+
+    emptyIndex = idx;
+    moves++; movesEl.textContent = moves;
+
+    if (isSolved()) showWin();
+  }
+
+  function isAdjacent(i, j) {
+    const ix = i % SIZE, iy = Math.floor(i / SIZE);
+    const jx = j % SIZE, jy = Math.floor(j / SIZE);
+    const dx = Math.abs(ix - jx), dy = Math.abs(iy - jy);
+    return (dx + dy) === 1;
+  }
+
+  function isSolved() {
+    // solved when tiles are in 0..COUNT-1 order
+    for (let i = 0; i < COUNT; i++) if (tiles[i] !== i) return false;
+    return true;
+  }
+
+  // ----- Solvability helpers for odd grid size (5x5) -----
+  function isSolvableOdd(arr) {
+    // treat last value (empty) as max, not counted
+    const flat = arr.slice(0, COUNT - 1);
+    const inv = countInversions(flat);
+    // For odd grid, solvable iff inversions count is even
+    return inv % 2 === 0;
+  }
+  function countInversions(a) {
+    let inv = 0;
+    for (let i=0;i<a.length;i++){
+      for (let j=i+1;j<a.length;j++){
+        if (a[i] > a[j]) inv++;
+      }
+    }
+    return inv;
+  }
+  function shuffle(a) {
+    const arr = a.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  function preloadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(src);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function showWin() {
+    winModal.classList.remove('hidden');
+  }
+})();
