@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Reverse Puzzle — Hard (5×5)</title>
+  <title>Reverse Puzzle — Medium (4×4)</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,19 +11,19 @@
   <div id="startOverlay" class="overlay">
     <div class="overlay-card">
       <h1>🪚 The Reverse Puzzle</h1>
-      <p>Hard mode only — complete the 5×5 sliding puzzle to reveal the passcode.</p>
+      <p>Medium mode — complete the <strong>4×4</strong> sliding puzzle to reveal the passcode.</p>
       <button id="startBtn" class="btn big">Start the Challenge</button>
     </div>
   </div>
 
   <header class="top">
     <h2>🪚 The Reverse Puzzle</h2>
-    <p class="sub">Hard mode only — complete the 5×5 sliding puzzle to reveal the passcode.</p>
+    <p class="sub">Medium mode — complete the <strong>4×4</strong> sliding puzzle to reveal the passcode.</p>
   </header>
 
   <main id="game" class="hidden">
     <section class="hud">
-      <div><strong>Grid:</strong> 5×5</div>
+      <div><strong>Grid:</strong> <span id="gridLabel">4×4</span></div>
       <div><strong>Moves:</strong> <span id="moves">0</span></div>
       <button id="newBtn" class="btn">New Puzzle</button>
     </section>
@@ -31,7 +31,6 @@
     <!-- Puzzle + reference side by side -->
     <section class="play">
       <div class="left">
-        <!-- Uses your image file (same folder) -->
         <div id="puzzle" class="board" data-img="Halloween Puzzle.PNG"></div>
         <p class="hint">Tap or slide tiles next to the empty space.</p>
       </div>
