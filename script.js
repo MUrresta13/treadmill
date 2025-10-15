@@ -1,5 +1,6 @@
 (() => {
-  const SIZE = 5;                  // hard 5×5
+  // MEDIUM difficulty: 4×4
+  const SIZE = 4;
   const COUNT = SIZE * SIZE;
 
   const startOverlay = document.getElementById('startOverlay');
@@ -9,6 +10,7 @@
   const boardEl = document.getElementById('puzzle');
   const movesEl = document.getElementById('moves');
   const newBtn  = document.getElementById('newBtn');
+  const gridLabel = document.getElementById('gridLabel');
 
   const refImg  = document.getElementById('refImg');
 
@@ -22,13 +24,20 @@
   let moves = 0;
   let spriteURL = '';
 
+  gridLabel.textContent = `${SIZE}×${SIZE}`;
+
   startBtn.addEventListener('click', async () => {
     startOverlay.style.display = 'none';
     gameRoot.classList.remove('hidden');
+
     const imgSrc = boardEl.dataset.img || 'Halloween Puzzle.PNG';
     spriteURL = await preloadImage(imgSrc);
-    // set reference image to the same file
     refImg.src = spriteURL;
+
+    // set board grid to SIZE × SIZE (overrides CSS)
+    boardEl.style.gridTemplateColumns = `repeat(${SIZE}, 1fr)`;
+    boardEl.style.gridTemplateRows = `repeat(${SIZE}, 1fr)`;
+
     build();
   });
 
@@ -40,7 +49,7 @@
     setTimeout(() => (copyBtn.textContent = 'Copy code'), 1100);
   });
 
-  // Prevent the page from scrolling while interacting with the puzzle
+  // keep swipes from scrolling the page
   boardEl.addEventListener('touchmove', (e) => e.preventDefault(), {passive:false});
 
   function build() {
@@ -52,7 +61,7 @@
     do {
       perm = shuffle(goal.slice(0, COUNT - 1));
       perm.push(COUNT - 1);
-    } while (!isSolvableOdd(perm));
+    } while (!isSolvableOdd(perm));      // 4×4 uses “odd inversion” rule like 5×5
 
     tiles = perm;
     emptyIndex = tiles.indexOf(COUNT - 1);
@@ -124,7 +133,7 @@
   function preloadImage(src){
     return new Promise((resolve,reject)=>{
       const img=new Image();
-      img.onload=()=>resolve(encodeURI(src));  // handles spaces / .PNG
+      img.onload=()=>resolve(encodeURI(src));
       img.onerror=reject;
       img.src=encodeURI(src);
     });
