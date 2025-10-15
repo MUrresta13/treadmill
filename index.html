@@ -7,28 +7,46 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Start gate -->
+  <div id="startOverlay" class="overlay">
+    <div class="overlay-card">
+      <h1>🪚 The Reverse Puzzle</h1>
+      <p>Hard mode only — complete the 5×5 sliding puzzle to reveal the passcode.</p>
+      <button id="startBtn" class="btn big">Start the Challenge</button>
+    </div>
+  </div>
+
   <header class="top">
-    <h1>🪚 The Reverse Puzzle</h1>
+    <h2>🪚 The Reverse Puzzle</h2>
     <p class="sub">Hard mode only — complete the 5×5 sliding puzzle to reveal the passcode.</p>
   </header>
 
-  <main>
+  <main id="game" class="hidden">
     <section class="hud">
       <div><strong>Grid:</strong> 5×5</div>
       <div><strong>Moves:</strong> <span id="moves">0</span></div>
       <button id="newBtn" class="btn">New Puzzle</button>
     </section>
 
-    <!-- Set your image here -->
-    <div id="puzzle" class="board" data-img="Halloween Puzzle.PNG"></div>
+    <!-- Puzzle + reference side by side -->
+    <section class="play">
+      <div class="left">
+        <!-- Uses your image file (same folder) -->
+        <div id="puzzle" class="board" data-img="Halloween Puzzle.PNG"></div>
+        <p class="hint">Tap or slide tiles next to the empty space.</p>
+      </div>
 
-    <p class="hint">Tap or slide tiles next to the empty space.</p>
+      <figure class="right ref-card">
+        <img id="refImg" alt="Completed reference" />
+        <figcaption>Reference</figcaption>
+      </figure>
+    </section>
   </main>
 
   <!-- Win Modal -->
   <div id="winModal" class="modal hidden" role="dialog" aria-modal="true">
     <div class="modal-card">
-      <h2>✅ Completed!</h2>
+      <h3>✅ Completed!</h3>
       <p>Passcode for Jigsaw’s second clue:</p>
       <div class="code-row">
         <input id="passcode" class="code" value="RAVENPROTOCOL" readonly />
